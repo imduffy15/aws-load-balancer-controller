@@ -2,10 +2,10 @@ package elbv2
 
 import (
 	"context"
+
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	elbv2sdk "github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/go-logr/logr"
-	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/algorithm"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/services"
 	elbv2model "sigs.k8s.io/aws-load-balancer-controller/pkg/model/elbv2"
@@ -42,26 +42,7 @@ func (r *defaultTargetGroupAttributeReconciler) Reconcile(ctx context.Context, r
 
 	attributesToUpdate, _ := algorithm.DiffStringMap(desiredAttrs, currentAttrs)
 	if len(attributesToUpdate) > 0 {
-		req := &elbv2sdk.ModifyTargetGroupAttributesInput{
-			TargetGroupArn: sdkTG.TargetGroup.TargetGroupArn,
-			Attributes:     nil,
-		}
-		for _, attrKey := range sets.StringKeySet(attributesToUpdate).List() {
-			req.Attributes = append(req.Attributes, &elbv2sdk.TargetGroupAttribute{
-				Key:   awssdk.String(attrKey),
-				Value: awssdk.String(attributesToUpdate[attrKey]),
-			})
-		}
-
-		r.logger.Info("modifying targetGroup attributes",
-			"stackID", resTG.Stack().StackID(),
-			"resourceID", resTG.ID(),
-			"arn", awssdk.StringValue(sdkTG.TargetGroup.TargetGroupArn),
-			"change", attributesToUpdate)
-		if _, err := r.elbv2Client.ModifyTargetGroupAttributesWithContext(ctx, req); err != nil {
-			return err
-		}
-		r.logger.Info("modified targetGroup attributes",
+		r.logger.Info("targetGroup attributes out of sync, reconcile is disabled.",
 			"stackID", resTG.Stack().StackID(),
 			"resourceID", resTG.ID(),
 			"arn", awssdk.StringValue(sdkTG.TargetGroup.TargetGroupArn))
